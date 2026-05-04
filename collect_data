@@ -1,0 +1,87 @@
+import serial, csv, numpy as np, time, msvcrt
+
+PORT = 'COM5'
+ser = serial.Serial(PORT, 115200)
+time.sleep(2)
+
+WINDOW_SIZE = 50
+STEP = 25
+
+def extract_features(signal):
+    signal = np.array(signal)
+    return [
+        np.sqrt(np.mean(signal**2)),           # RMS
+        np.mean(np.abs(signal)),               # MAV
+        np.sum(np.abs(np.diff(signal))),       # WL
+        np.sum(signal[:-1] * signal[1:] < 0),  # ZC
+        np.sum(((signal[1:-1] > signal[:-2]) & (signal[1:-1] > signal[2:])) |
+               ((signal[1:-1] < signal[:-2]) & (signal[1:-1] < signal[2:]))), # SSC
+        np.var(signal)                         # VAR
+    ]
+
+def smooth(signal):
+    return np.convolve(signal, np.ones(5)/5, mode='valid')
+
+print("\nLabels:")
+print("0 Open | 1 Thumb | 2 Index | 3 Middle | 4 Ring | 5 Little | 6 All Close | 7 Victory | 8 ThumbsUp")
+
+current_label = None
+
+with open("emg_dataset_features.csv", "w", newline="") as f:
+    writer = csv.writer(f)
+
+    header = []
+    for s in ['thumb','index','middle','ring','little']:
+        header += [f"{s}_rms", f"{s}_mav", f"{s}_wl", f"{s}_zc", f"{s}_ssc", f"{s}_var"]
+    header.append("label")
+    writer.writerow(header)
+
+    bt, bi, bm, br, bl = [], [], [], [], []
+
+    while True:
+        if ser.in_waiting:
+            try:
+                line = ser.readline().decode().strip()
+                parts = line.split(",")
+
+                if len(parts) != 5:
+                    continue
+
+                t, i, m, r, l = map(int, parts)
+
+                bt.append(t)
+                bi.append(i)
+                bm.append(m)
+                br.append(r)
+                bl.append(l)
+
+                if len(bt) >= WINDOW_SIZE and current_label is not None:
+                    features = []
+                    features += extract_features(smooth(bt))
+                    features += extract_features(smooth(bi))
+                    features += extract_features(smooth(bm))
+                    features += extract_features(smooth(br))
+                    features += extract_features(smooth(bl))
+
+                    features.append(current_label)
+                    writer.writerow(features)
+
+                    print(f"Saved label {current_label}")
+
+                    bt = bt[STEP:]
+                    bi = bi[STEP:]
+                    bm = bm[STEP:]
+                    br = br[STEP:]
+                    bl = bl[STEP:]
+
+            except:
+                pass
+
+        if msvcrt.kbhit():
+            key = msvcrt.getch().decode()
+
+            if key == 'q':
+                break
+            elif key in [str(i) for i in range(9)]:
+                current_label = int(key)
+                print(f"\nRecording {current_label}")

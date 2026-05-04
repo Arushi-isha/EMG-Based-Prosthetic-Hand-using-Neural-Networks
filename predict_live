@@ -1,0 +1,95 @@
+import serial
+import numpy as np
+import joblib
+import time
+from tensorflow.keras.models import load_model
+
+PORT = 'COM5'
+ser = serial.Serial(PORT, 115200)
+time.sleep(2)
+
+model = load_model("5 Sensor\Dataset-1 Purna\emg_cnn_model.h5")
+scaler = joblib.load("5 Sensor\Dataset-1 Purna\scaler.pkl")
+
+WINDOW_SIZE = 50
+STEP = 25
+
+def extract_features(signal):
+    signal = np.array(signal)
+
+    rms = np.sqrt(np.mean(signal**2))
+    mav = np.mean(np.abs(signal))
+    wl = np.sum(np.abs(np.diff(signal)))
+    zc = np.sum(signal[:-1] * signal[1:] < 0)
+
+    ssc = np.sum(
+        ((signal[1:-1] > signal[:-2]) & (signal[1:-1] > signal[2:])) |
+        ((signal[1:-1] < signal[:-2]) & (signal[1:-1] < signal[2:]))
+    )
+
+    var = np.var(signal)
+
+    return [rms, mav, wl, zc, ssc, var]
+
+def smooth(signal):
+    return np.convolve(signal, np.ones(5)/5, mode='valid')
+
+labels = [
+    "OPEN",
+    "THUMB",
+    "INDEX",
+    "MIDDLE",
+    "RING",
+    "LITTLE",
+    "ALL CLOSE",
+    "VICTORY",
+    "THUMBS UP"
+]
+
+bt, bi, bm, br, bl = [], [], [], [], []
+
+print("Live EMG Prediction Started...\n")
+
+while True:
+    if ser.in_waiting:
+        try:
+            line = ser.readline().decode().strip()
+            parts = line.split(",")
+
+            if len(parts) != 5:
+                continue
+
+            t, i, m, r, l = map(int, parts)
+
+            bt.append(t)
+            bi.append(i)
+            bm.append(m)
+            br.append(r)
+            bl.append(l)
+
+            if len(bt) >= WINDOW_SIZE:
+
+                features = []
+                features += extract_features(smooth(bt))
+                features += extract_features(smooth(bi))
+                features += extract_features(smooth(bm))
+                features += extract_features(smooth(br))
+                features += extract_features(smooth(bl))
+
+                X = scaler.transform([features])
+                X = X.reshape(-1, 5, 6, 1)
+
+                pred = model.predict(X, verbose=0)
+                gesture = labels[np.argmax(pred)]
+                confidence = np.max(pred)
+
+                print(f"Prediction: {gesture} ({confidence:.2f})")
+
+                bt = bt[STEP:]
+                bi = bi[STEP:]
+                bm = bm[STEP:]
+                br = br[STEP:]
+                bl = bl[STEP:]
+
+        except Exception as e:
+            print("Error:", e)
