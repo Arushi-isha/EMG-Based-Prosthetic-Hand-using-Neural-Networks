@@ -4,7 +4,7 @@ This repository contains the implementation of an intelligent, multi-channel **E
 
 ---
 
-### ## Project Overview
+### Project Overview
 The goal of this project is to develop a cost-effective and scalable assistive device for individuals with upper-limb loss. By bridging the gap between biomedical signal processing and deep learning, the system provides a more natural and intuitive control interface compared to traditional threshold-based myoelectric limbs.
 
 **Key Features:**
@@ -15,7 +15,7 @@ The goal of this project is to develop a cost-effective and scalable assistive d
 
 ---
 
-### ## Hardware Requirements
+### Hardware Requirements
 | Component | Specification/Function |
 | :--- | :--- |
 | **Microcontroller** | **Arduino Nano** (ATmega328P) |
@@ -50,7 +50,7 @@ The software architecture is divided into three primary stages:
 
 ---
 
-### ## Supported Gestures
+### Supported Gestures
 The system is trained to recognize and actuate the following:
 *   **Open Hand / Close Hand**
 *   **Individual Finger Movements** (Thumb, Index, Middle, Ring, Little)
@@ -58,21 +58,21 @@ The system is trained to recognize and actuate the following:
 
 ---
 
-### ## Performance
+### Performance
 *   **Generic Model**: ~80% accuracy (generalized across 10 users).
 *   **Custom Model**: ~85% accuracy (user-specific calibration).
 *   **System Stability**: Employs confidence-based filtering (threshold = 0.7) to prevent unintended activations.
 
 ---
 
-### ## Repository Structure
+### Repository Structure
 *   `/arduino`: Contains firmware for EMG data streaming and servo control.
 *   `/python`: Scripts for data collection, feature extraction, and CNN training.
 *   `/models`: Pre-trained `.h5` model files and `scaler.pkl`.
 
 ---
 
-### ## How to Use
+### How to Use
 1.  **Hardware Setup**: Connect sensors to A0-A4 and servos to D3, D5, D6, D9, D10.
 2.  **Data Collection**: Run the Python data collection script while performing gestures to build a custom dataset.
 3.  **Training**: Train the model using the provided CNN architecture script.
