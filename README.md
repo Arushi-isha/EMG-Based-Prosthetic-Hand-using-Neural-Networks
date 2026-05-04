@@ -26,7 +26,7 @@ The goal of this project is to develop a cost-effective and scalable assistive d
 
 ---
 
-### ## Software Pipeline
+### Software Pipeline
 The software architecture is divided into three primary stages:
 
 1.  **Signal Acquisition & Preprocessing**:
